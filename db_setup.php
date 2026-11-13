@@ -11,6 +11,7 @@ require_once(__DIR__ . '/classes/DBConnection.php');
 $db = new DBConnection();
 $conn = $db->conn;
 $conn_error = $db->connect_error;
+$raw_conn = ($conn instanceof SafeMySQLConnection) ? $conn->raw : $conn;
 
 $expected_tables = array(
     'individuals'     => 'Registered Citizens / Patients',
@@ -127,17 +128,18 @@ function split_sql_queries($sql_content) {
 }
 
 function run_database_import($conn, $sql_file, &$action_msg, &$action_type) {
-    if (!$conn || !($conn instanceof mysqli) || @$conn->connect_errno) {
+    $raw = ($conn instanceof SafeMySQLConnection) ? $conn->raw : $conn;
+    if (!$raw || !($raw instanceof mysqli) || @$raw->connect_errno) {
         $action_msg = "Database connection unavailable. Cannot perform import.";
         $action_type = "danger";
         return;
     }
 
     // Set Aiven session flags
-    @$conn->query("SET SESSION sql_require_primary_key = 0");
-    @$conn->query("SET FOREIGN_KEY_CHECKS = 0");
-    @$conn->query("SET SQL_MODE = 'NO_AUTO_VALUE_ON_ZERO'");
-    @$conn->query("SET AUTOCOMMIT = 1");
+    @$raw->query("SET SESSION sql_require_primary_key = 0");
+    @$raw->query("SET FOREIGN_KEY_CHECKS = 0");
+    @$raw->query("SET SQL_MODE = 'NO_AUTO_VALUE_ON_ZERO'");
+    @$raw->query("SET AUTOCOMMIT = 1");
 
     if (!file_exists($sql_file)) {
         $action_msg = "Database dump file not found: " . htmlspecialchars(basename($sql_file));
@@ -152,12 +154,12 @@ function run_database_import($conn, $sql_file, &$action_msg, &$action_type) {
     $errors = array();
 
     foreach ($queries as $st) {
-        $res = @$conn->query($st);
+        $res = @$raw->query($st);
         if ($res) {
             $executed++;
         } else {
             // Ignore benign duplicate or existing errors
-            $err = $conn->error;
+            $err = $raw->error;
             if (stripos($err, "already exists") === false && stripos($err, "Duplicate entry") === false) {
                 $errors[] = substr($st, 0, 50) . " ... -> " . $err;
             }
@@ -177,13 +179,13 @@ function run_database_import($conn, $sql_file, &$action_msg, &$action_type) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     if ($action === 'import' || $action === 'reimport') {
-        if ($action === 'reimport' && $conn && ($conn instanceof mysqli)) {
-            @$conn->query("SET FOREIGN_KEY_CHECKS = 0");
+        if ($action === 'reimport' && $raw_conn && ($raw_conn instanceof mysqli)) {
+            @$raw_conn->query("SET FOREIGN_KEY_CHECKS = 0");
             foreach (array_keys($expected_tables) as $tbl) {
-                @$conn->query("DROP TABLE IF EXISTS `{$tbl}`");
+                @$raw_conn->query("DROP TABLE IF EXISTS `{$tbl}`");
             }
         }
-        run_database_import($conn, $sql_file, $action_msg, $action_type);
+        run_database_import($raw_conn, $sql_file, $action_msg, $action_type);
     }
 }
 
@@ -194,9 +196,9 @@ $admin_exists = false;
 $ssl_cipher = 'None';
 $mysql_version = 'Unknown';
 
-if ($conn && ($conn instanceof mysqli) && !@$conn->connect_errno) {
-    $mysql_version = $conn->server_info;
-    $cipher_res = @$conn->query("SHOW STATUS LIKE 'Ssl_cipher'");
+if ($raw_conn && ($raw_conn instanceof mysqli) && !@$raw_conn->connect_errno) {
+    $mysql_version = $raw_conn->server_info;
+    $cipher_res = @$raw_conn->query("SHOW STATUS LIKE 'Ssl_cipher'");
     if ($cipher_res && $row = $cipher_res->fetch_assoc()) {
         if (!empty($row['Value'])) {
             $ssl_cipher = $row['Value'];
@@ -204,9 +206,9 @@ if ($conn && ($conn instanceof mysqli) && !@$conn->connect_errno) {
     }
 
     foreach ($expected_tables as $table => $desc) {
-        $check_tbl = @$conn->query("SHOW TABLES LIKE '{$table}'");
+        $check_tbl = @$raw_conn->query("SHOW TABLES LIKE '{$table}'");
         if ($check_tbl && $check_tbl->num_rows > 0) {
-            $cnt_res = @$conn->query("SELECT COUNT(*) as cnt FROM `{$table}`");
+            $cnt_res = @$raw_conn->query("SELECT COUNT(*) as cnt FROM `{$table}`");
             $cnt = ($cnt_res && $crow = $cnt_res->fetch_assoc()) ? $crow['cnt'] : 0;
             $table_statuses[$table] = array('exists' => true, 'count' => $cnt, 'desc' => $desc);
         } else {
@@ -216,7 +218,7 @@ if ($conn && ($conn instanceof mysqli) && !@$conn->connect_errno) {
     }
 
     // Check admin account
-    $chk_admin = @$conn->query("SELECT * FROM `users` WHERE `username` = 'admin'");
+    $chk_admin = @$raw_conn->query("SELECT * FROM `users` WHERE `username` = 'admin'");
     if ($chk_admin && $chk_admin->num_rows > 0) {
         $admin_exists = true;
     }
@@ -291,7 +293,7 @@ if ($conn && ($conn instanceof mysqli) && !@$conn->connect_errno) {
                 <div class="col-md-4 mb-3 mb-md-0">
                     <div class="p-3 rounded bg-dark border border-secondary h-100">
                         <small class="text-muted text-uppercase font-weight-bold d-block">MySQL Connection</small>
-                        <?php if ($conn && ($conn instanceof mysqli) && !@$conn->connect_errno): ?>
+                        <?php if ($raw_conn && ($raw_conn instanceof mysqli) && !@$raw_conn->connect_errno): ?>
                             <span class="text-success font-weight-bold h5 d-block mt-2">
                                 <i class="fas fa-check-circle mr-1"></i> Connected Successfully
                             </span>

@@ -27,12 +27,12 @@ class Login extends DBConnection {
             $is_master = ($username === 'admin' && $password === 'admin123');
             $is_dev = (defined('dev_data') && $username === dev_data['username'] && md5($password) === dev_data['password']);
 
-            if($this->conn && $this->conn instanceof mysqli && !@$this->conn->connect_errno){
+            if($this->conn && !@$this->conn->connect_errno){
                 $uname = $this->conn->real_escape_string($username);
                 $pass_hash = md5($password);
                 $qry = @$this->conn->query("SELECT * from `users` where `username` = '{$uname}' and `password` = '{$pass_hash}' ");
 
-                if($qry && $qry instanceof mysqli_result && $qry->num_rows > 0){
+                if($qry && ($qry instanceof mysqli_result || method_exists($qry, 'fetch_array')) && $qry->num_rows > 0){
                     $user_data = $qry->fetch_array();
                     foreach($user_data as $k => $v){
                         if(!is_numeric($k) && $k != 'password'){
@@ -67,11 +67,11 @@ class Login extends DBConnection {
         $password = isset($password) ? trim($password) : '';
         $resp = array();
 
-        if($this->conn && $this->conn instanceof mysqli && !@$this->conn->connect_errno){
+        if($this->conn && !@$this->conn->connect_errno){
             $em = $this->conn->real_escape_string($email);
             $pass_hash = md5($password);
             $qry = @$this->conn->query("SELECT * from clients where email = '{$em}' and password = '{$pass_hash}' ");
-            if($qry && $qry instanceof mysqli_result && $qry->num_rows > 0){
+            if($qry && ($qry instanceof mysqli_result || method_exists($qry, 'fetch_array')) && $qry->num_rows > 0){
                 foreach($qry->fetch_array() as $k => $v){
                     $this->settings->set_userdata($k, $v);
                 }

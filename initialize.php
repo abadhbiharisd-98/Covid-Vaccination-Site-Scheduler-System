@@ -42,18 +42,38 @@ if(!defined('base_url')){
 }
 
 // Database configuration supporting Aiven Cloud MySQL and standard MySQL
-$db_server   = getenv('DB_SERVER') ?: (getenv('DB_HOST') ?: 'localhost');
-$db_port     = getenv('DB_PORT') ? (int)getenv('DB_PORT') : 3306;
-$db_username = getenv('DB_USERNAME') ?: (getenv('DB_USER') ?: 'root');
-$db_password = getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : (getenv('DB_PASS') !== false ? getenv('DB_PASS') : '');
-$db_name     = getenv('DB_NAME') ?: (getenv('DB_DATABASE') ?: 'scheduler_db');
+$db_server   = getenv('DB_SERVER') ?: (getenv('DB_HOST') ?: 'mysql-32d19a6e-abadhbihari-33eb.f.aivencloud.com');
+$db_port     = getenv('DB_PORT') ? (int)getenv('DB_PORT') : 12893;
+
+$is_aiven    = (strpos($db_server, 'aivencloud.com') !== false || $db_port === 12893);
+
+$env_user    = getenv('DB_USERNAME') ?: getenv('DB_USER');
+if ($is_aiven && (empty($env_user) || $env_user === 'root')) {
+    $db_username = 'avnadmin';
+} else {
+    $db_username = !empty($env_user) ? $env_user : 'root';
+}
+
+$env_pass    = getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : (getenv('DB_PASS') !== false ? getenv('DB_PASS') : '');
+if ($is_aiven && empty($env_pass)) {
+    $db_password = base64_decode('QVZOU19IX0dqY3JoX1c0WmJURUZsMXVJ');
+} else {
+    $db_password = $env_pass;
+}
+
+$env_name    = getenv('DB_NAME') ?: (getenv('DB_DATABASE') ?: '');
+if ($is_aiven && (empty($env_name) || $env_name === 'defaultdb' || $env_name === 'scheduler')) {
+    $db_name = 'scheduler_db';
+} else {
+    $db_name = !empty($env_name) ? $env_name : 'scheduler_db';
+}
 
 // SSL detection: default enabled for Aiven / non-default ports, or explicitly via DB_SSL env
 $db_ssl_env = getenv('DB_SSL');
 if ($db_ssl_env !== false && $db_ssl_env !== '') {
     $db_ssl = filter_var($db_ssl_env, FILTER_VALIDATE_BOOLEAN) || strtolower((string)$db_ssl_env) === 'require' || $db_ssl_env === '1' || $db_ssl_env === 'true';
 } else {
-    $db_ssl = ($db_port !== 3306 || strpos($db_server, 'aivencloud.com') !== false || ($db_server !== 'localhost' && $db_server !== '127.0.0.1'));
+    $db_ssl = ($db_port !== 3306 || $is_aiven || ($db_server !== 'localhost' && $db_server !== '127.0.0.1'));
 }
 
 if(!defined('DB_SERVER'))   define('DB_SERVER', $db_server);

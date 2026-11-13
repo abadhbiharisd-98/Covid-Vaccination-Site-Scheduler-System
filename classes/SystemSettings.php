@@ -11,13 +11,13 @@ class SystemSettings extends DBConnection{
 		return($this->conn);
 	}
 	function load_system_info(){
-		if(!$this->conn || !($this->conn instanceof mysqli) || @$this->conn->connect_errno){
+		if(!$this->conn || @$this->conn->connect_errno){
 			return false;
 		}
 		try {
 			$sql = "SELECT * FROM system_info";
 			$qry = @$this->conn->query($sql);
-			if($qry && $qry instanceof mysqli_result){
+			if($qry && ($qry instanceof mysqli_result || method_exists($qry, 'fetch_assoc'))){
 				while($row = $qry->fetch_assoc()){
 					$_SESSION['system_info'][$row['meta_field']] = $row['meta_value'];
 				}
@@ -28,13 +28,13 @@ class SystemSettings extends DBConnection{
 		}
 	}
 	function update_system_info(){
-		if(!$this->conn || !($this->conn instanceof mysqli) || @$this->conn->connect_errno){
+		if(!$this->conn || @$this->conn->connect_errno){
 			return false;
 		}
 		try {
 			$sql = "SELECT * FROM system_info";
 			$qry = @$this->conn->query($sql);
-			if($qry && $qry instanceof mysqli_result){
+			if($qry && ($qry instanceof mysqli_result || method_exists($qry, 'fetch_assoc'))){
 				while($row = $qry->fetch_assoc()){
 					if(isset($_SESSION['system_info'][$row['meta_field']]))unset($_SESSION['system_info'][$row['meta_field']]);
 					$_SESSION['system_info'][$row['meta_field']] = $row['meta_value'];
@@ -46,7 +46,7 @@ class SystemSettings extends DBConnection{
 		}
 	}
 	function update_settings_info(){
-		if(!$this->conn || !($this->conn instanceof mysqli) || @$this->conn->connect_errno){
+		if(!$this->conn || @$this->conn->connect_errno){
 			return false;
 		}
 		$data = "";
