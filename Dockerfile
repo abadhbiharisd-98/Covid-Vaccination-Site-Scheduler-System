@@ -36,3 +36,4 @@ EXPOSE 80 10000
 
 # Start Apache via startup script
 CMD ["/usr/local/bin/start.sh"]
+

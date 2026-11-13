@@ -36,3 +36,4 @@ chmod -R 777 /var/www/html/uploads
 # 5. Start Apache in foreground
 echo "[Render Startup] Apache configured successfully. Launching apache2-foreground..."
 exec apache2-foreground
+

@@ -429,3 +429,4 @@ if ($conn && ($conn instanceof mysqli) && !@$conn->connect_errno) {
 <script src="<?php echo base_url; ?>plugins/bootstrap/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
+
