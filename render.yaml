@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: covid-vaccination-site-scheduler-system
+    env: docker
+    plan: free
+    region: oregon
+    dockerfilePath: Dockerfile
+    healthCheckPath: /admin/login.php
+    envVars:
+      - key: DB_SERVER
+        value: mysql-32d19a6e-abadhbihari-33eb.f.aivencloud.com
+      - key: DB_PORT
+        value: "12893"
+      - key: DB_USERNAME
+        value: avnadmin
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_NAME
+        value: scheduler_db
+      - key: DB_SSL
+        value: "true"
+      - key: BASE_URL
+        sync: false

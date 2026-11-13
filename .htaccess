@@ -1,0 +1,33 @@
+# Render Reverse Proxy & Apache Configuration Fixes
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+
+    # 1. Reverse Proxy HTTPS Protocol Detection
+    RewriteCond %{HTTP:X-Forwarded-Proto} =https [OR]
+    RewriteCond %{HTTPS} on
+    RewriteRule ^ - [E=REQ_PROTO:https]
+    RewriteCond %{HTTP:X-Forwarded-Proto} !=https
+    RewriteCond %{HTTPS} off
+    RewriteRule ^ - [E=REQ_PROTO:http]
+
+    # 2. Port 10000 Stripping Fix:
+    # If the Host header includes an internal container port (e.g. :10000), redirect to clean hostname
+    RewriteCond %{HTTP_HOST} ^([^:]+):[0-9]+$
+    RewriteRule ^(.*)$ %{ENV:REQ_PROTO}://%1/$1 [R=301,L]
+
+    # 3. Direct Route for Admin to bypass directory slash port leak
+    RewriteRule ^admin/?$ admin/index.php [R=301,L]
+
+    # 4. Smart Trailing Slash for Directories:
+    # Prevents Apache's mod_dir from issuing internal redirects containing :10000
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteCond %{REQUEST_URI} !/$
+    RewriteRule ^(.*)$ %{ENV:REQ_PROTO}://%{HTTP_HOST}/$1/ [R=301,L]
+</IfModule>
+
+# Disable directory browsing
+Options -Indexes
+
+# Set default index files
+DirectoryIndex index.php login.php

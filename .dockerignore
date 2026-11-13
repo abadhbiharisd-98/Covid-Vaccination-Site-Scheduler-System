@@ -1,0 +1,5 @@
+.git
+.gitignore
+*.original
+test_*.py
+*.tmp
